@@ -424,14 +424,10 @@ def convert_bytes_to_str(dot_array):
 def write_bmh_char(outfile, char, dot_array, progmem):
     # C Type declaration strings
     # Adjust for different MCU/compilers
-    C_declaration_0 = 'const char bitmap_'
-    if(progmem):
-        C_declaration_1 = '[] PROGMEM = {'
-    else:
-        C_declaration_1 = '[] = {'
 
+    pm = 'PROGMEM ' if progmem else '';
     C_mem_array = convert_bytes_to_str(dot_array);
-    C_printline = C_declaration_0 + str(ord(char)) + C_declaration_1 + C_mem_array +'};\n'
+    C_printline = f"const char bitmap_{ord(char)}[] {pm}= {{{C_mem_array}}};\n"
 
     #print(C_printline)
     outfile.write(C_printline)
