@@ -18,9 +18,11 @@ The script offers a command line interface with somehow self-describing argument
 
 
     usage: ttf2bmh.py [-h] [-l] [-f TTF_FOLDER] [-o OUTPUT_FOLDER] [-c CHARACTER_FILENAME] [-C CHARACTERS] [--ascii]
-                      [--font FONT] [-s {8,24,32,40,48,56,64,all}] [--variable_width] [--progmem] [-p] [--square]
+                      [--font FONT] [-s {8,16,24,32,40,48,56,64,all}] [-O OFFSET] [--variable_width] [-fh FONT_HEIGHT]
+                      [-y Y_OFFSET] [--progmem] [-p] [--square] [--vertical] [--nosubdirs] [--nospaces] [--usebbox]
+                      [--cpp] [--hex]
 
-    optional arguments:
+    options:
       -h, --help            show this help message and exit
       -l, --license         show license terms
       -f TTF_FOLDER, --ttf_folder TTF_FOLDER
@@ -36,13 +38,25 @@ The script offers a command line interface with somehow self-describing argument
       --ascii               Convert for all ascii characters (overrides -c and -C)
       --font FONT           Define Font Name to be processed. Name should include modifier like Bold or Italic. If none
                             is given, all fonts in folder will be processed.
-      -s {8,24,32,40,48,56,64,all}, --fontsize {8,24,32,40,48,56,64,all}
+      -s {8,16,24,32,40,48,56,64,all}, --fontsize {8,16,24,32,40,48,56,64,all}
                             Fontsize (Fontheight) in pixels. Default: 32
+      -O OFFSET, --offset OFFSET
+                            Y Offset for characters (Default is based off font size)
       --variable_width      Variable width of characters.
+      -fh FONT_HEIGHT, --font_height FONT_HEIGHT
+                            Define fontsize of rendered font within the defined pixel image boundary
+      -y Y_OFFSET, --y_offset Y_OFFSET
+                            Define starting offset of character. Only meaningful if specific fontsize is rendered.
       --progmem             C Variable declaration adds PROGMEM to character arrays. Useful to store the characters in
                             porgram memory for AVR Microcontrollers with limited Flash or EEprom
       -p, --print_ascii     Print each character as ASCII Art on commandline, for debugging
       --square              Make the font square instead of height by (height * 0.75)
+      --vertical            Create vertical bitmaps
+      --nosubdirs           Put all generated files into output directory. Do not create subfilders.
+      --nospaces            Replace spaces with underscores in file names.
+      --usebbox             Use bounding-box for glyph sizes.
+      --cpp                 Genertae C++ header.
+      --hex                 Genertae hexadecimal byte notation.
 
 The program can also be run directly on Linux systems by doing `./ttf2bmh.py`
 
