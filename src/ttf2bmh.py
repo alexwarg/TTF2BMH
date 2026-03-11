@@ -61,6 +61,8 @@ def main():
     parser.add_argument('--progmem',dest='progmem', default=False, action='store_true',help='C Variable declaration adds PROGMEM to character arrays. Useful to store the characters in porgram memory for AVR Microcontrollers with limited Flash or EEprom')
     parser.add_argument('-p','--print_ascii',dest='print_ascii', default=False, action='store_true',help='Print each character as ASCII Art on commandline, for debugging')
     parser.add_argument('--square', default=False, action='store_true',help='Make the font square instead of height by (height * 0.75)')
+    parser.add_argument('--nosubdirs', default=False, action='store_true', help='Put all generated files into output directory. Do not create subfilders.')
+    parser.add_argument('--nospaces', default=False, action='store_true', help='Replace spaces with underscores in file names.')
     args = parser.parse_args()
 
     if sys.platform == 'linux' and args.ttf_folder == "C:\\Windows\\Fonts\\":
@@ -146,8 +148,13 @@ def main():
             Font = re.sub('\x00','',Font)
 
             output_bmh_folder = os.path.join(output_folder, Font)
+            if args.nosubdirs:
+                output_bmh_folder = output_folder
+
             if not (os.path.exists(output_bmh_folder)):
                 os.mkdir(output_bmh_folder)
+
+            font_filename_prefix = re.sub('\\s+', '_', Font);
 
             for height_idx in height_indices:
                 width_array = []
@@ -164,7 +171,11 @@ def main():
                     yoffset = font_yoffsets[height_idx]
 
                 # Filename Definitions
-                filename = Font + '_' + str(height) # General Filename
+                filename = (font_filename_prefix if args.nospaces else Font) + '_' + str(height) # General Filename
+
+                # type anme if used
+                type_name = font_typename_prefix + '_' + str(height)
+
                 h_filename = os.path.join(output_bmh_folder, filename + '.h') # Outputfile for font
                 png_filename = os.path.join(output_bmh_folder, filename + '.png') # Outputfile for font
 
