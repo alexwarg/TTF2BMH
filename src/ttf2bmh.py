@@ -283,7 +283,7 @@ def get_ttf_filename (Target_Font, ttf_searchfolder):
     target_ttf_file = -1
     target_ttf_dir = -1
     for dirpath, dirnames, filenames in os.walk(ttf_searchfolder):
-        for filename in [f for f in filenames if f.endswith(".ttf")]:
+        for filename in [f for f in filenames if f.endswith(".ttf") or f.endswith(".TTF")]:
             ttf_file = {'dir': dirpath, 'filename': filename}
             TTF_FILES.append(ttf_file)
 
@@ -394,7 +394,7 @@ def read_character_file(char_filename):
 def search_ttf_folder(ttf_searchfolder):
     TTF_FILES = []
     for dirpath, dirnames, filenames in os.walk(ttf_searchfolder):
-        for filename in [f for f in filenames if f.endswith(".ttf")]:
+        for filename in [f for f in filenames if f.endswith(".ttf") or f.endswith(".TTF")]:
             ttf_file = {'dir': dirpath, 'filename': filename}
             TTF_FILES.append(ttf_file)
     return TTF_FILES
