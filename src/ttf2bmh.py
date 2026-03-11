@@ -64,6 +64,7 @@ def main():
     parser.add_argument('--vertical', default=False, action='store_true',help='Create vertical bitmaps')
     parser.add_argument('--nosubdirs', default=False, action='store_true', help='Put all generated files into output directory. Do not create subfilders.')
     parser.add_argument('--nospaces', default=False, action='store_true', help='Replace spaces with underscores in file names.')
+    parser.add_argument('--usebbox', default=False, action='store_true', help='Use bounding-box for glyph sizes.')
     global args;
     args = parser.parse_args()
 
@@ -182,8 +183,6 @@ def main():
                 png_filename = os.path.join(output_bmh_folder, filename + '.png') # Outputfile for font
 
                 # define PILfont
-                size = [width, height]
-
                 if (args.font_height is None):
                     font_height = int(font_heights[height_idx]*1.1)
 
@@ -195,7 +194,12 @@ def main():
 
                 for char in chars:
                     # Create pixel image with PIL
-                    image =  Image.new('1', size, color=255)
+                    if args.usebbox:
+                        [l, t, r, b] = PILfont.getbbox(char);
+                        width = r - l
+                        #print (f"BBOX: {char} {l}, {width}, {t}, {b}");
+
+                    image =  Image.new('1', [width, height], color=255)
                     draw = ImageDraw.Draw(image)
                     draw.text((0, -yoffset), char, font=PILfont)
 
@@ -291,7 +295,11 @@ def get_ttf_filename (Target_Font, ttf_searchfolder):
 def write_pic_file(character_line, PILfont, width, height, png_filename):
 
     mode = '1'
-    pic_size = (len(character_line) * width, height+10)
+    if args.usebbox:
+        [l, t, r, b] = PILfont.getbbox(character_line)
+        pic_size = [r-l + 1, b + 3]
+    else:
+        pic_size = (len(character_line) * width, height+10)
     image_pic =  Image.new(mode, pic_size, color=255)
     draw_pic = ImageDraw.Draw(image_pic)
     draw_pic.text((0, 0), character_line, font=PILfont)
