@@ -61,8 +61,10 @@ def main():
     parser.add_argument('--progmem',dest='progmem', default=False, action='store_true',help='C Variable declaration adds PROGMEM to character arrays. Useful to store the characters in porgram memory for AVR Microcontrollers with limited Flash or EEprom')
     parser.add_argument('-p','--print_ascii',dest='print_ascii', default=False, action='store_true',help='Print each character as ASCII Art on commandline, for debugging')
     parser.add_argument('--square', default=False, action='store_true',help='Make the font square instead of height by (height * 0.75)')
+    parser.add_argument('--vertical', default=False, action='store_true',help='Create vertical bitmaps')
     parser.add_argument('--nosubdirs', default=False, action='store_true', help='Put all generated files into output directory. Do not create subfilders.')
     parser.add_argument('--nospaces', default=False, action='store_true', help='Replace spaces with underscores in file names.')
+    global args;
     args = parser.parse_args()
 
     if sys.platform == 'linux' and args.ttf_folder == "C:\\Windows\\Fonts\\":
@@ -298,18 +300,29 @@ def write_pic_file(character_line, PILfont, width, height, png_filename):
     return 0
 
 #---------------------------------------------------------------------------------------
+# Calculate one byte for eight pixels
+def get_pix_byte(image, x_s, y_s, x_offset, dot_threshold):
+    dot_byte = 0
+    for k in range(8):
+        bmf_s = image.getpixel(((x_s + x_offset), (y_s * 8 + k)))
+        if(bmf_s < dot_threshold):
+            dot_byte = dot_byte + 2**k
+
+    return dot_byte
+
+#---------------------------------------------------------------------------------------
 # Calculate full pixels from image
 def get_pixel_byte(image, height, char_width, x_offset):
     dot_threshold = 127
     dot_array = []
-    for y_s in range(int(height/8)):
+    if args.vertical:
         for x_s in range(char_width):
-            dot_byte = 0
-            for k in range(8):
-                bmf_s = image.getpixel(((x_s + x_offset), (y_s * 8 + k)))
-                if(bmf_s < dot_threshold):
-                    dot_byte = dot_byte + 2**k
-            dot_array.append(str(dot_byte))
+            for y_s in range(int(height/8)):
+                dot_array.append(get_pix_byte(image, x_s, y_s, x_offset, dot_threshold))
+    else:
+        for y_s in range(int(height/8)):
+            for x_s in range(char_width):
+                dot_array.append(get_pix_byte(image, x_s, y_s, x_offset, dot_threshold))
     return dot_array
 
 #---------------------------------------------------------------------------------------
@@ -373,7 +386,7 @@ def write_bmh_head(h_filename, Font, height):
 # Process BMF array and create header file to be used with any C compiler
     outfile = open(h_filename,"w+")
 
-    outfile.write("// Header File for SSD1306 characters\n")
+    outfile.write(f"// Header File for SSD1306 characters vertical={args.vertical}\n")
     outfile.write("// Generated with TTF2BMH\n")
     outfile.write("// Font " +  Font + "\n")
 
