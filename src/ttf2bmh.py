@@ -65,6 +65,7 @@ def main():
     parser.add_argument('--nosubdirs', default=False, action='store_true', help='Put all generated files into output directory. Do not create subfilders.')
     parser.add_argument('--nospaces', default=False, action='store_true', help='Replace spaces with underscores in file names.')
     parser.add_argument('--usebbox', default=False, action='store_true', help='Use bounding-box for glyph sizes.')
+    parser.add_argument('--hex', default=False, action='store_true', help='Genertae hexadecimal byte notation.')
     global args;
     args = parser.parse_args()
 
@@ -404,6 +405,22 @@ def write_bmh_head(h_filename, Font, height):
 
 #---------------------------------------------------------------------------------------
 #
+def convert_bytes_to_str(dot_array):
+    if args.hex:
+        a = []
+        comma = ""
+        for i, byte in enumerate(dot_array):
+            if i % 16 == 0:
+                a.append(f"{comma}\n        ")
+                comma = ""
+            a.append(f"{comma}0x{byte:02X}")
+            comma = ", "
+        return (''.join(a))
+    else:
+        return (','.join(map(str, dot_array)))
+
+#---------------------------------------------------------------------------------------
+#
 def write_bmh_char(outfile, char, dot_array, progmem):
     # C Type declaration strings
     # Adjust for different MCU/compilers
@@ -413,7 +430,7 @@ def write_bmh_char(outfile, char, dot_array, progmem):
     else:
         C_declaration_1 = '[] = {'
 
-    C_mem_array = (','.join(dot_array))
+    C_mem_array = convert_bytes_to_str(dot_array);
     C_printline = C_declaration_0 + str(ord(char)) + C_declaration_1 + C_mem_array +'};\n'
 
     #print(C_printline)
