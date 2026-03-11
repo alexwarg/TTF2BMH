@@ -65,6 +65,7 @@ def main():
     parser.add_argument('--nosubdirs', default=False, action='store_true', help='Put all generated files into output directory. Do not create subfilders.')
     parser.add_argument('--nospaces', default=False, action='store_true', help='Replace spaces with underscores in file names.')
     parser.add_argument('--usebbox', default=False, action='store_true', help='Use bounding-box for glyph sizes.')
+    parser.add_argument('--cpp', default=False, action='store_true', help='Genertae C++ header.')
     parser.add_argument('--hex', default=False, action='store_true', help='Genertae hexadecimal byte notation.')
     global args;
     args = parser.parse_args()
@@ -159,9 +160,12 @@ def main():
                 os.mkdir(output_bmh_folder)
 
             font_filename_prefix = re.sub('\\s+', '_', Font);
+            font_typename_prefix = 'Fnt_' + re.sub('-', '_', font_filename_prefix).lower();
 
             for height_idx in height_indices:
-                width_array = []
+                width_array = []      # full widths of glyphs, might be bigger than the variable widths of the glyphs
+                xoffset_array = []    # xoffsets for variable width bitmap
+                char_width_array = [] # widths of the bitmap for the glyph
 
                 # initialize PIL Image
                 height = font_heights[height_idx]
@@ -191,7 +195,7 @@ def main():
                 PILfont = ImageFont.truetype(ttf_absolute_filename, font_height)
 
                 # Open BMH file and start writing
-                outfile = write_bmh_head(h_filename, Font, height)
+                outfile = write_bmh_head(h_filename, Font, height, type_name=type_name, font_name_prefix=font_typename_prefix)
 
                 for char in chars:
                     # Create pixel image with PIL
@@ -214,7 +218,10 @@ def main():
                         char_width = width
                         x_offset = 0
 
-                    width_array.append(str(char_width))
+                    width_array.append(width)
+                    xoffset_array.append(x_offset)
+                    char_width_array.append(char_width)
+
                     dot_array = get_pixel_byte(image, height, char_width, x_offset)
 
                     write_bmh_char(outfile, char, dot_array, progmem)
@@ -223,7 +230,7 @@ def main():
                         print_char(image, height, char_width, x_offset)
 
                 # write tail and close bmh file
-                write_bmh_tail(outfile, width_array, character_line)
+                write_bmh_tail(outfile, width_array, character_line, xoffset_array, char_width_array)
                 # write Image picture with all characters
                 write_pic_file(character_line, PILfont, width, height, png_filename)
                 if(len(TTF_FILES)<20):
@@ -391,7 +398,40 @@ def search_ttf_folder(ttf_searchfolder):
     return TTF_FILES
 
 #---------------------------------------------------------------------------------------
-def write_bmh_head(h_filename, Font, height):
+def ptr_type(typ, cast=False, array=False):
+    t = f"Pgm_ptr<{typ}>" if args.progmem else f"{typ} const *"
+    t = f"{t} const []" if array else t
+    return f"({t})" if cast else t
+
+#---------------------------------------------------------------------------------------
+def val(typ, val):
+    if args.progmem:
+        return f"Pgm({typ}{{{val}}})"
+    return f"{typ}{{{val}}}"
+
+#---------------------------------------------------------------------------------------
+def write_bmh_cpp_head(outfile, Font, height, type_name, font_name_prefix):
+    def c_bool(v):
+        return "true" if v else "false"
+
+    C = f'''
+#pragma once
+
+struct {type_name}
+{{
+    static constexpr char const *name = "{Font}";
+    static constexpr unsigned height = {height};
+    static constexpr bool vertical = {c_bool(args.vertical)};
+    static constexpr bool width_compressed = {c_bool(args.variable_width)};
+
+    static constexpr unsigned bytes_per_row = {height} / 8;
+''';
+
+    outfile.write(C);
+
+
+#---------------------------------------------------------------------------------------
+def write_bmh_head(h_filename, Font, height, type_name, font_name_prefix):
 # Process BMF array and create header file to be used with any C compiler
     outfile = open(h_filename,"w+")
 
@@ -401,6 +441,9 @@ def write_bmh_head(h_filename, Font, height):
 
     #print('Font: ' + Font + ', Size:' + str(height))
     outfile.write("// Font Size: " + str(height) + "\n")
+
+    if args.cpp:
+        write_bmh_cpp_head(outfile, Font, height, type_name, font_name_prefix)
     return outfile
 
 #---------------------------------------------------------------------------------------
@@ -427,17 +470,48 @@ def write_bmh_char(outfile, char, dot_array, progmem):
 
     pm = 'PROGMEM ' if progmem else '';
     C_mem_array = convert_bytes_to_str(dot_array);
-    C_printline = f"const char bitmap_{ord(char)}[] {pm}= {{{C_mem_array}}};\n"
+    if args.cpp:
+        C_printline = f'''
+    static constexpr auto const bitmap_{ord(char)} = {val('(unsigned char const [])', C_mem_array)};
+''';
+    else:
+        C_printline = f"const char bitmap_{ord(char)}[] {pm}= {{{C_mem_array}}};\n"
 
     #print(C_printline)
     outfile.write(C_printline)
 
 #---------------------------------------------------------------------------------------
 # Write BMH Tail and close file
-def write_bmh_tail(outfile, width_array, character_line):
+def write_bmh_cpp_tail(outfile, width_array, character_line, xoff_array, cwa):
+    char_wa = []
+    cnames = []
+
+
+    for idx in range(len(character_line)):
+        cname = f"&bitmap_{ord(character_line[idx])}"
+        cnames.append(cname);
+        char_wa.append(cwa[idx])
+
+    C = f'''
+    static constexpr auto const width = {val('(unsigned char const [])', ','.join(map(str, width_array)))};
+    static constexpr auto const cwidth = {val('(unsigned char const [])', ','.join(map(str, char_wa)))};
+    static constexpr auto const xoff = {val('(unsigned char const [])', ','.join(map(str, xoff_array)))};
+    static constexpr auto const charsx = {val(ptr_type('unsigned char', True, True), ','.join(cnames))};
+}};
+'''
+    outfile.write(C);
+
+#---------------------------------------------------------------------------------------
+# Write BMH Tail and close file
+def write_bmh_tail(outfile, width_array, character_line, xoff_array, cwa):
+    if args.cpp:
+        write_bmh_cpp_tail(outfile, width_array, character_line, xoff_array, cwa)
+        outfile.close()
+        return
+
     C_addr_array = []
     C_char_width_0 = 'const char char_width[] = {'
-    C_char_width_1 = (','.join(width_array))
+    C_char_width_1 = (','.join(map(str, width_array)))
     C_char_width_2 = '};\n'
 
     outfile.write(C_char_width_0 + C_char_width_1 + C_char_width_2)
