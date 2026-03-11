@@ -190,6 +190,8 @@ def main():
                 # define PILfont
                 if (args.font_height is None):
                     font_height = int(font_heights[height_idx]*1.1)
+                else:
+                    font_height = int(args.font_height)
 
                 #font_height = int(height*1.1)
                 PILfont = ImageFont.truetype(ttf_absolute_filename, font_height)
